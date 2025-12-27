@@ -1,9 +1,12 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Box, Grid, Typography, Paper, Avatar, IconButton, useTheme } from '@mui/material';
 import Sidebar from '../components/Sidebar';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { AuthContext } from '../context/AuthContext';
-import ThemeToggle from '../components/ThemeToggle'; // Import Toggle
+import ThemeToggle from '../components/ThemeToggle'; 
+
+// --- The Glass Popup ---
+import CompleteProfileModal from '../components/CompleteProfileModal'; 
 
 // Icons
 import MenuIcon from '@mui/icons-material/Menu';
@@ -23,17 +26,41 @@ const data = [{v: 10}, {v: 15}, {v: 8}, {v: 20}, {v: 12}, {v: 25}];
 const PatientDashboard = () => {
     const [open, setOpen] = useState(true);
     const { user } = useContext(AuthContext);
-    const theme = useTheme(); // Hook to access theme colors
+    const theme = useTheme(); 
+
+    // --- 1. STATE FOR MODAL ---
+    const [showProfileModal, setShowProfileModal] = useState(false);
+
+    // --- 2. AUTO-OPEN IF USER IS NEW ---
+    useEffect(() => {
+        if (user?.status === 'NEW') {
+            setShowProfileModal(true);
+        }
+    }, [user]);
 
     return (
-        // FIX 1: Use 'background.default' instead of hardcoded '#f1f5f9'
-        <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100vh', color: 'text.primary' }}>
+        <Box sx={{ 
+        display: 'flex', 
+        minHeight: '100vh', 
+        color: 'text.primary',
+        // --- NEW GRADIENT BACKGROUND ---
+        background: theme.palette.mode === 'dark' 
+            ? 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)' // Matches Sidebar Dark
+            : 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)', // Soft Slate for Light Mode
+        transition: 'background 0.3s ease'
+    }}>
             
-            <Sidebar role="PATIENT" open={open} handleDrawerClose={() => setOpen(false)} />
+            {/* 3. PASS OPENER FUNCTION TO SIDEBAR */}
+            <Sidebar 
+                role="PATIENT" 
+                open={open} 
+                handleDrawerClose={() => setOpen(false)} 
+                onVerifyClick={() => setShowProfileModal(true)} 
+            />
             
             <Box component="main" sx={{ flexGrow: 1, p: 4, transition: '0.3s' }}>
                 
-                {/* 1. Top Bar */}
+                {/* Top Bar */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         {!open && (
@@ -47,10 +74,7 @@ const PatientDashboard = () => {
                         </Box>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        
-                        {/* THEME TOGGLE ADDED HERE */}
                         <ThemeToggle />
-
                         <IconButton sx={{ bgcolor: 'background.paper' }}><NotificationsNoneIcon /></IconButton>
                         <Avatar sx={{ bgcolor: 'primary.main' }}>
                             {user?.fullName?.charAt(0) || 'P'}
@@ -58,8 +82,7 @@ const PatientDashboard = () => {
                     </Box>
                 </Box>
 
-                {/* 2. Welcome Banner */}
-                {/* FIX 2: Use 'background.paper' for cards */}
+                {/* Welcome Banner */}
                 <Paper elevation={0} sx={{ p: 4, borderRadius: 4, mb: 4, display: 'flex', alignItems: 'center', bgcolor: 'background.paper', position: 'relative', overflow: 'hidden' }}>
                     <Box sx={{ flex: 1, zIndex: 1 }}>
                         <Typography variant="h6" color="text.secondary" gutterBottom>Welcome back</Typography>
@@ -73,7 +96,7 @@ const PatientDashboard = () => {
                     <Box component="img" src="https://img.freepik.com/free-vector/doctors-concept-illustration_114360-1515.jpg" sx={{ width: 300, display: { xs: 'none', md: 'block' } }} />
                 </Paper>
 
-                {/* 3. Vitals Grid */}
+                {/* Vitals Grid */}
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                     <VitalCard title="Blood Pressure" value="110/70" unit="mmHg" icon={<BloodtypeIcon sx={{ fontSize: 30, color: '#ff6b6b' }} />} color="#ff6b6b" trend="+10% Higher" />
                     <VitalCard title="Heart Rate" value="72" unit="bpm" icon={<MonitorHeartIcon sx={{ fontSize: 30, color: '#1dd1a1' }} />} color="#1dd1a1" trend="-7% Lower" />
@@ -81,7 +104,7 @@ const PatientDashboard = () => {
                     <VitalCard title="Blood Count" value="9,456" unit="/mL" icon={<ScienceIcon sx={{ fontSize: 30, color: '#5f27cd' }} />} color="#5f27cd" trend="-2% Lower" />
                 </Grid>
 
-                {/* 4. Appointments & Reports */}
+                {/* Appointments & Reports */}
                 <Grid container spacing={3}>
                     {/* Appointment List */}
                     <Grid item xs={12} md={8}>
@@ -98,7 +121,6 @@ const PatientDashboard = () => {
                             ].map((apt, index) => (
                                 <Box key={index} sx={{ 
                                     display: 'flex', alignItems: 'center', p: 2, mb: 2, 
-                                    // FIX 3: Adaptive background for list items
                                     bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8f9fa', 
                                     borderRadius: 3, 
                                     transition: '0.3s', 
@@ -148,6 +170,13 @@ const PatientDashboard = () => {
                         </Paper>
                     </Grid>
                 </Grid>
+
+                {/* 4. RENDER MODAL WITH STATE CONTROL */}
+                <CompleteProfileModal 
+                    open={showProfileModal} 
+                    onClose={() => setShowProfileModal(false)} 
+                />
+
             </Box>
         </Box>
     );
@@ -163,11 +192,15 @@ const VitalCard = ({ title, value, unit, icon, color, trend }) => (
             <Typography variant="body2" color="text.secondary" fontWeight="600">{title}</Typography>
             <Typography variant="h5" fontWeight="bold" sx={{ my: 1 }}>{value} <Typography component="span" variant="caption" color="text.secondary">{unit}</Typography></Typography>
             
-            <Box sx={{ height: 30 }}>
+            {/* ✅ FIXED: The specific height here (40px) is what stops the crash/logout loop */}
+            <Box sx={{ height: 40, width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}><Line type="monotone" dataKey="v" stroke={color} strokeWidth={3} dot={false} /></LineChart>
+                    <LineChart data={data}>
+                        <Line type="monotone" dataKey="v" stroke={color} strokeWidth={3} dot={false} />
+                    </LineChart>
                 </ResponsiveContainer>
             </Box>
+            
             <Typography variant="caption" color={trend.includes('+') ? 'success.main' : 'error.main'} fontWeight="bold">{trend}</Typography>
         </Paper>
     </Grid>

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { 
     Box, Container, Grid, Typography, Paper, IconButton, Avatar, useTheme,
     List, ListItem, ListItemIcon, ListItemText, Checkbox, Chip
@@ -11,6 +11,9 @@ import Sidebar from '../components/Sidebar.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import ThemeToggle from '../components/ThemeToggle.jsx'; 
+
+// --- NEW IMPORT: The Glass Popup ---
+import CompleteProfileModal from '../components/CompleteProfileModal';
 
 // --- Icons ---
 import PeopleIcon from '@mui/icons-material/People';
@@ -36,6 +39,16 @@ const DoctorDashboard = () => {
     const { user } = useContext(AuthContext); 
     const theme = useTheme(); 
 
+    // --- 1. STATE FOR MODAL ---
+    const [showProfileModal, setShowProfileModal] = useState(false);
+
+    // --- 2. AUTO-OPEN IF USER IS NEW ---
+    useEffect(() => {
+        if (user?.status === 'NEW') {
+            setShowProfileModal(true);
+        }
+    }, [user]);
+
     // --- To-Do List State ---
     const [todos, setTodos] = useState([
         { id: 1, text: 'Review annual reports for James Doe', completed: false },
@@ -52,7 +65,6 @@ const DoctorDashboard = () => {
 
     // --- Simple Calendar Logic ---
     const days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    // Static calendar grid for visual demo
     const calendarDates = [
         null, null, 1, 2, 3, 4, 5,
         6, 7, 8, 9, 10, 11, 12,
@@ -63,7 +75,14 @@ const DoctorDashboard = () => {
 
     return (
         <Box sx={{ display: 'flex', bgcolor: 'background.default', minHeight: '100vh', color: 'text.primary' }}>
-            <Sidebar role="DOCTOR" open={open} handleDrawerClose={() => setOpen(false)} />
+            
+            {/* 3. PASS OPENER FUNCTION TO SIDEBAR */}
+            <Sidebar 
+                role="DOCTOR" 
+                open={open} 
+                handleDrawerClose={() => setOpen(false)} 
+                onVerifyClick={() => setShowProfileModal(true)} 
+            />
             
             <Box component="main" sx={{ flexGrow: 1, p: 3, transition: '0.3s' }}>
                 
@@ -243,6 +262,13 @@ const DoctorDashboard = () => {
                         </Grid>
                     </Grid>
                 </Container>
+
+                {/* 4. RENDER MODAL WITH STATE CONTROL */}
+                <CompleteProfileModal 
+                    open={showProfileModal} 
+                    onClose={() => setShowProfileModal(false)} 
+                />
+
             </Box>
         </Box>
     );

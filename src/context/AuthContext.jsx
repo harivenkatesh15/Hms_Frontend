@@ -5,37 +5,53 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token') || '');
+    const [loading, setLoading] = useState(true); // ✅ ADDED: Prevents "flicker" on refresh
 
     useEffect(() => {
-        const storedRole = localStorage.getItem('role');
-        const storedName = localStorage.getItem('fullName');
-        const storedStatus = localStorage.getItem('status'); // <--- GET STATUS
+        // 1. Check Local Storage on App Start
+        const storedUser = localStorage.getItem('user');
+        const storedToken = localStorage.getItem('token');
         
-        if (token && storedRole) {
-            setUser({ role: storedRole, fullName: storedName, status: storedStatus });
+        if (storedToken && storedUser) {
+            try {
+                // Parse the JSON string back into an object { id: 1, role: "DOCTOR", ... }
+                setUser(JSON.parse(storedUser));
+                setToken(storedToken);
+            } catch (error) {
+                console.error("Failed to parse user data:", error);
+                localStorage.clear();
+            }
         }
-    }, [token]);
+        setLoading(false); // App is ready
+    }, []);
 
-    // Update login to accept status
-    const login = (newToken, role, fullName, status) => {
-        localStorage.setItem('token', newToken);
-        localStorage.setItem('role', role);
-        localStorage.setItem('fullName', fullName);
-        localStorage.setItem('status', status); // <--- SAVE STATUS
+    // 2. Updated Login Function (Matches Login.jsx)
+    const login = (userData, newToken) => {
+        // userData contains: { id, email, role, fullName, status }
         
+        // Save to State
         setToken(newToken);
-        setUser({ role, fullName, status });
+        setUser(userData);
+
+        // Save to Local Storage (Persist ID after refresh)
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(userData)); 
     };
 
+    // 3. Logout Function
     const logout = () => {
-        localStorage.clear(); // Clears all items
+        localStorage.removeItem('token');
+        localStorage.removeItem('user'); // Removes the whole object
         setToken('');
         setUser(null);
+        // Optional: Redirect to login manually if needed, 
+        // but usually the Router handles this via PrivateRoute.
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, logout }}>
-            {children}
+        <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+            {/* Don't render children until we know if user is logged in */}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

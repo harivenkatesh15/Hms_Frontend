@@ -14,30 +14,51 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false); // Added loading state
+    
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
+
         try {
             const res = await axios.post('http://localhost:8080/api/auth/login', { email, password });
             
-            // 1. Save data to Context
-            login(res.data.token, res.data.role, res.data.fullName, res.data.status);
+            // 🔍 DEBUG: Check console to prove ID is arriving
+            console.log("Login Success! Response Data:", res.data);
 
-            // 2. REMOVED THE FORCED REDIRECT FOR 'NEW' STATUS HERE
-            // Now everyone goes to their dashboard, regardless of status
+            // 1. Extract ALL fields including the new ID
+            const { token, role, fullName, status, id } = res.data;
 
-            // 3. Normal Redirects based on Role
-            if (res.data.role === 'ADMIN') navigate('/admin-dashboard');
-            else if (res.data.role === 'DOCTOR') navigate('/doctor-dashboard');
-            else navigate('/patient-dashboard');
+            // 2. Create a User Object (Vital for features like Request Access)
+            const userData = {
+                id: id,            // <--- CRITICAL FIX: Saving the ID
+                email: email,
+                role: role,
+                fullName: fullName,
+                status: status
+            };
+
+            // 3. Send to AuthContext
+            // Note: Ensure your AuthContext 'login' function accepts (userData, token)
+            login(userData, token);
+
+            // 4. Redirect based on Role
+            if (role === 'ADMIN') navigate('/admin-dashboard');
+            else if (role === 'DOCTOR') navigate('/doctor-dashboard');
+            else navigate('/patient/dashboard'); // Updated to match your new route structure
 
         } catch (err) {
+            console.error("Login Error:", err);
             setError('Invalid Credentials. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
+
     return (
         <Grid container component="main" sx={{ height: '100vh' }}>
             <CssBaseline />
@@ -57,15 +78,10 @@ const Login = () => {
                     position: 'relative',
                 }}
             >
-                {/* Optional: A subtle blue overlay to make text pop if we add any */}
                 <Box
                     sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: 'rgba(25, 118, 210, 0.1)', // primary blue with low opacity
+                        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
                     }}
                 />
             </Grid>
@@ -74,13 +90,8 @@ const Login = () => {
             <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
                 <Box
                     sx={{
-                        my: 8,
-                        mx: 4,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        height: '100%',
-                        justifyContent: 'center'
+                        my: 8, mx: 4, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        height: '100%', justifyContent: 'center'
                     }}
                 >
                     <Avatar sx={{ m: 1, bgcolor: 'primary.main', width: 56, height: 56 }}>
@@ -128,9 +139,10 @@ const Login = () => {
                             fullWidth
                             variant="contained"
                             size="large"
+                            disabled={loading}
                             sx={{ py: 1.5, fontSize: '1rem', fontWeight: 600, borderRadius: 2 }}
                         >
-                            Sign In
+                            {loading ? "Signing In..." : "Sign In"}
                         </Button>
                         <Grid container justifyContent="flex-end" sx={{ mt: 2 }}>
                             <Grid item>
